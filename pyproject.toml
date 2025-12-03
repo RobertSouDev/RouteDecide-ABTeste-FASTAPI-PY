@@ -1,0 +1,14 @@
+[project]
+name = "test-a-b"
+version = "0.1.0"
+description = "Servidor FastAPI para teste A/B"
+requires-python = ">=3.8"
+dependencies = [
+    "fastapi>=0.104.0",
+    "uvicorn[standard]>=0.24.0",
+]
+
+[build-system]
+requires = ["pdm-backend"]
+build-backend = "pdm.backend"
+
