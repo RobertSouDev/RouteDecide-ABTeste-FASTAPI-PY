@@ -2,6 +2,13 @@
 <html>
 <head>
     <title>Teste A/B - Frontend</title>
+    
+        <script 
+          src="frontend-sdk/ab-test-sdk.js"
+          data-test-id="landing_001"
+          data-api-url="http://localhost:8000">
+        </script>
+    
 </head>
 <body>
     <div id="app">
@@ -9,137 +16,92 @@
     </div>
 
     <script>
-        const API_URL = 'http://localhost:8000';
-        const TEST_ID = 'landing_001';
-
-        // 1. Gerar ou recuperar visitorId
-        function getVisitorId() {
-            let visitorId = localStorage.getItem('visitorId');
-            if (!visitorId) {
-                visitorId = crypto.randomUUID();
-                localStorage.setItem('visitorId', visitorId);
-            }
-            return visitorId;
-        }
-
-        // 2. Obter variante do backend
-        async function getVariant() {
-            const visitorId = getVisitorId();
+        // Função para aguardar o SDK inicializar
+        function waitForSDK(callback, maxAttempts = 50) {
+            let attempts = 0;
             
-            try {
-                const response = await fetch(`${API_URL}/experiment`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        testId: TEST_ID,
-                        visitorId: visitorId
-                    })
-                });
-
-                if (!response.ok) {
-                    throw new Error('Erro ao obter variante');
+            const checkSDK = setInterval(function() {
+                attempts++;
+                
+                if (window.testeab && window.testeab.isInitialized) {
+                    clearInterval(checkSDK);
+                    callback();
+                } else if (attempts >= maxAttempts) {
+                    clearInterval(checkSDK);
+                    console.error('SDK não inicializou após', maxAttempts * 100, 'ms');
+                    document.getElementById('app').innerHTML = 
+                        '<p style="color: red;">Erro: SDK não inicializou</p>';
                 }
-
-                const data = await response.json();
-                console.log('Variante recebida:', data);
-                return data;
-            } catch (error) {
-                console.error('Erro:', error);
-                throw error;
-            }
+            }, 100);
         }
 
-        // 3. Carregar conteúdo das sections
-        async function loadSections(sections) {
+        // Função para carregar e exibir as seções
+        async function loadSections() {
             const app = document.getElementById('app');
-            app.innerHTML = '';
+            const sections = window.testeab.sections;
+            const variantId = window.testeab.variantId;
 
+            if (!sections || sections.length === 0) {
+                app.innerHTML = '<p>Nenhuma seção encontrada</p>';
+                return;
+            }
+
+            // Exibir informações da variante
+            let html = `
+                <div style="margin-bottom: 20px; padding: 15px; background: #f0f0f0; border-radius: 5px;">
+                    <h2>Informações do Teste A/B</h2>
+                    <p><strong>Variante ID:</strong> ${variantId || 'N/A'}</p>
+                    <p><strong>Total de Seções:</strong> ${sections.length}</p>
+                </div>
+            `;
+
+            // Carregar cada seção
+            for (const section of sections) {
+                html += `
+                    <div style="margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px;">
+                        <h3>Seção: ${section.id}</h3>
+                        <p><strong>URL:</strong> <a href="${section.contentUrl}" target="_blank">${section.contentUrl}</a></p>
+                        <div id="section-${section.id}" style="margin-top: 10px; padding: 10px; background: #f9f9f9; border-radius: 3px;">
+                            <p>Carregando conteúdo...</p>
+                        </div>
+                        <button style="margin-top: 15px; padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 16px;">
+                            Clique Aqui - ${section.id}
+                        </button>
+                    </div>
+                `;
+            }
+
+            app.innerHTML = html;
+
+            // Carregar conteúdo de cada seção
             for (const section of sections) {
                 try {
-                    // Se contentUrl for HTML, carregar diretamente
                     const response = await fetch(section.contentUrl);
-                    const content = await response.text();
-                    
-                    const sectionDiv = document.createElement('div');
-                    sectionDiv.id = section.id;
-                    sectionDiv.innerHTML = content;
-                    app.appendChild(sectionDiv);
-                } catch (error) {
-                    console.warn(`Erro ao carregar ${section.id}:`, error);
-                    // Fallback: mostrar placeholder
-                    const sectionDiv = document.createElement('div');
-                    sectionDiv.id = section.id;
-                    sectionDiv.innerHTML = `<p>Seção ${section.id} (URL: ${section.contentUrl})</p>`;
-                    app.appendChild(sectionDiv);
-                }
-            }
-        }
-
-        // 4. Registrar conversão
-        async function registerConversion(variantId, event = 'lead') {
-            const visitorId = getVisitorId();
-            
-            try {
-                const response = await fetch(`${API_URL}/conversion`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        testId: TEST_ID,
-                        variantId: variantId,
-                        visitorId: visitorId,
-                        event: event
-                    })
-                });
-
-                if (!response.ok) {
-                    const error = await response.json();
-                    throw new Error(error.detail || 'Erro ao registrar conversão');
-                }
-
-                console.log('Conversão registrada com sucesso!');
-                return true;
-            } catch (error) {
-                console.error('Erro ao registrar conversão:', error);
-                return false;
-            }
-        }
-
-        // 5. Inicializar página
-        async function init() {
-            try {
-                // Obter variante
-                const experimentData = await getVariant();
-                
-                // Carregar e exibir conteúdo
-                await loadSections(experimentData.sections);
-                
-                // Adicionar listener para botão de conversão (exemplo)
-                const buttons = document.querySelectorAll('button[data-convert]');
-                buttons.forEach(button => {
-                    button.addEventListener('click', async () => {
-                        const success = await registerConversion(
-                            experimentData.variantId,
-                            button.dataset.convert || 'lead'
-                        );
-                        
-                        if (success) {
-                            alert('Obrigado! Sua ação foi registrada.');
+                    if (response.ok) {
+                        const content = await response.text();
+                        const sectionDiv = document.getElementById(`section-${section.id}`);
+                        if (sectionDiv) {
+                            sectionDiv.innerHTML = content;
                         }
-                    });
-                });
-
-                // Log para debug
-                console.log(`Visitante vendo variante: ${experimentData.variantId}`);
-                console.log(`Visitor ID: ${getVisitorId()}`);
-                
-            } catch (error) {
-                document.getElementById('app').innerHTML = 
-                    `<p style="color: red;">Erro ao carregar: ${error.message}</p>`;
+                    } else {
+                        const sectionDiv = document.getElementById(`section-${section.id}`);
+                        if (sectionDiv) {
+                            sectionDiv.innerHTML = `<p style="color: orange;">Erro ao carregar: ${response.status} ${response.statusText}</p>`;
+                        }
+                    }
+                } catch (error) {
+                    console.error(`Erro ao carregar seção ${section.id}:`, error);
+                    const sectionDiv = document.getElementById(`section-${section.id}`);
+                    if (sectionDiv) {
+                        sectionDiv.innerHTML = `<p style="color: red;">Erro ao carregar conteúdo: ${error.message}</p>`;
+                    }
+                }
             }
         }
 
-        // Iniciar quando página carregar
-        init();
+        // Aguardar SDK e então carregar seções
+        waitForSDK(loadSections);
     </script>
+    
 </body>
 </html>

@@ -27,26 +27,24 @@ def save_test(test_id: str, name: str, variants: list, status: str = "active"):
     }
 
 
-def add_impression(test_id: str, variant_id: str, visitor_id: str):
+def add_impression(test_id: str, variant_id: str):
     """Adiciona uma impressão"""
     impression = {
         "id": str(uuid4()),
         "testId": test_id,
         "variantId": variant_id,
-        "visitorId": visitor_id,
         "timestamp": datetime.utcnow()
     }
     impressions.append(impression)
     return impression
 
 
-def add_conversion(test_id: str, variant_id: str, visitor_id: str, event: str):
+def add_conversion(test_id: str, variant_id: str, event: str):
     """Adiciona uma conversão"""
     conversion = {
         "id": str(uuid4()),
         "testId": test_id,
         "variantId": variant_id,
-        "visitorId": visitor_id,
         "event": event,
         "timestamp": datetime.utcnow()
     }
@@ -67,16 +65,6 @@ def count_conversions(test_id: str, variant_id: str) -> int:
     return sum(
         1 for conv in conversions
         if conv["testId"] == test_id and conv["variantId"] == variant_id
-    )
-
-
-def visitor_saw_variant(test_id: str, variant_id: str, visitor_id: str) -> bool:
-    """Verifica se um visitante viu uma variante específica"""
-    return any(
-        imp["testId"] == test_id 
-        and imp["variantId"] == variant_id 
-        and imp["visitorId"] == visitor_id
-        for imp in impressions
     )
 
 

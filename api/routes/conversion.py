@@ -17,13 +17,11 @@ def register_conversion(
     test_service: TestService = Depends(get_test_service)
 ):
     """
-    Registra uma conversão por visitante.
-    Valida se o visitante realmente viu a variante antes de registrar.
+    Registra uma conversão.
     """
     test_service.register_conversion(
         request.testId,
         request.variantId,
-        request.visitorId,
         request.event
     )
     return ConversionResponse(ok=True)

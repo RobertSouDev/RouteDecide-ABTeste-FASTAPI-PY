@@ -8,7 +8,6 @@ from core.exceptions import (
     TestNotFoundError,
     TestInactiveError,
     InvalidDistributionError,
-    VisitorNotSeenVariantError,
     TestAlreadyExistsError,
 )
 from api.routes import admin, experiment, conversion
@@ -46,11 +45,6 @@ async def abtest_exception_handler(request: Request, exc: ABTestException):
             content={"detail": str(exc)}
         )
     elif isinstance(exc, InvalidDistributionError):
-        return JSONResponse(
-            status_code=400,
-            content={"detail": str(exc)}
-        )
-    elif isinstance(exc, VisitorNotSeenVariantError):
         return JSONResponse(
             status_code=400,
             content={"detail": str(exc)}

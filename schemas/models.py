@@ -23,7 +23,6 @@ class Test(BaseModel):
 
 class ExperimentRequest(BaseModel):
     testId: str
-    visitorId: str
 
 
 class ExperimentResponse(BaseModel):
@@ -34,7 +33,6 @@ class ExperimentResponse(BaseModel):
 class ConversionRequest(BaseModel):
     testId: str
     variantId: str
-    visitorId: str
     event: str
 
 

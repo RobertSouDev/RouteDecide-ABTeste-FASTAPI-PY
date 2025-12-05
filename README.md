@@ -174,7 +174,7 @@ Quando um visitante acessa sua landing page, você deve chamar este endpoint par
 
 **Opção 1: Usando GET (query parameters)**
 ```bash
-curl "http://localhost:8000/experiment?testId=landing_001&visitorId=usuario123"
+curl "http://localhost:8000/experiment?testId=landing_001"
 ```
 
 **Opção 2: Usando POST (JSON no body)**
@@ -182,8 +182,7 @@ curl "http://localhost:8000/experiment?testId=landing_001&visitorId=usuario123"
 curl -X POST "http://localhost:8000/experiment" \
   -H "Content-Type: application/json" \
   -d '{
-    "testId": "landing_001",
-    "visitorId": "usuario123"
+    "testId": "landing_001"
   }'
 ```
 
@@ -200,29 +199,18 @@ curl -X POST "http://localhost:8000/experiment" \
 ```
 
 **Como funciona:**
-- O backend seleciona uma variante baseada na distribuição configurada usando hash determinístico
-- **O mesmo visitante sempre verá a mesma variante** (garantindo consistência no teste A/B)
-- Com distribuição 50/50, aproximadamente 50% dos visitantes verão A e 50% verão B
-- A seleção é baseada em hash do `testId + visitorId`, garantindo consistência entre requisições
+- O backend seleciona uma variante baseada na distribuição configurada
+- Com distribuição 50/50, aproximadamente 50% das requisições verão A e 50% verão B
 - Uma impressão é automaticamente registrada para a variante retornada
-- Use o `visitorId` para identificar visitantes únicos (recomendado: UUID salvo no localStorage)
 
 **Exemplo de uso no JavaScript:**
 ```javascript
-// Gerar ou recuperar visitorId (salvar no localStorage)
-let visitorId = localStorage.getItem('visitorId');
-if (!visitorId) {
-  visitorId = crypto.randomUUID();
-  localStorage.setItem('visitorId', visitorId);
-}
-
 // Obter variante
 const response = await fetch('http://localhost:8000/experiment', {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({
-    testId: 'landing_001',
-    visitorId: visitorId
+    testId: 'landing_001'
   })
 });
 
@@ -241,7 +229,6 @@ curl -X POST "http://localhost:8000/conversion" \
   -d '{
     "testId": "landing_001",
     "variantId": "B",
-    "visitorId": "usuario123",
     "event": "lead"
   }'
 ```
@@ -255,13 +242,8 @@ curl -X POST "http://localhost:8000/conversion" \
 
 **Parâmetros:**
 - `testId`: ID do experimento
-- `variantId`: ID da variante que o visitante viu (obtido no Passo 2)
-- `visitorId`: ID do visitante (mesmo usado no Passo 2)
+- `variantId`: ID da variante que foi exibida (obtido no Passo 2)
 - `event`: Tipo de evento/conversão (ex: "lead", "purchase", "signup")
-
-**Validação:**
-- O sistema valida se o visitante realmente viu a variante antes de registrar a conversão
-- Se o visitante não tiver visto a variante, retornará erro 400
 
 **Exemplo de uso no JavaScript:**
 ```javascript
@@ -272,7 +254,6 @@ await fetch('http://localhost:8000/conversion', {
   body: JSON.stringify({
     testId: 'landing_001',
     variantId: data.variantId, // Variante obtida no Passo 2
-    visitorId: visitorId,
     event: 'lead'
   })
 });
@@ -349,13 +330,11 @@ Retorna a variante a ser exibida e registra uma impressão.
 
 **GET - Query Parameters:**
 - `testId`: ID do experimento
-- `visitorId`: ID do visitante
 
 **POST - Request Body:**
 ```json
 {
-  "testId": "landing_001",
-  "visitorId": "usuario123"
+  "testId": "landing_001"
 }
 ```
 
@@ -373,21 +352,19 @@ Retorna a variante a ser exibida e registra uma impressão.
 ```
 
 **Comportamento:**
-- Seleção **determinística** baseada em hash do `testId + visitorId`
-- O mesmo visitante sempre verá a mesma variante (consistência garantida)
+- Seleção baseada na distribuição configurada
 - Registra automaticamente uma impressão
 - Respeita as porcentagens de distribuição no agregado
 
 ### 3. POST /conversion
 
-Registra uma conversão por visitante.
+Registra uma conversão.
 
 **Request Body:**
 ```json
 {
   "testId": "landing_001",
   "variantId": "A",
-  "visitorId": "usuario123",
   "event": "lead"
 }
 ```
@@ -462,17 +439,15 @@ Lista todos os testes cadastrados.
 
 ## 🎲 Como Funciona a Distribuição
 
-O sistema usa **hash determinístico** para distribuir as variantes, garantindo consistência:
+O sistema distribui as variantes baseado na distribuição configurada:
 
-- **Distribuição 50/50**: Aproximadamente 50% dos visitantes verão A e 50% verão B
-- **Distribuição 30/40/30**: Aproximadamente 30% verão A, 40% verão B e 30% verão C
-- **Consistência garantida**: O mesmo visitante sempre verá a mesma variante (baseado em hash do `testId + visitorId`)
+- **Distribuição 50/50**: Aproximadamente 50% das requisições retornarão A e 50% retornarão B
+- **Distribuição 30/40/30**: Aproximadamente 30% retornarão A, 40% retornarão B e 30% retornarão C
 
 **Exemplo prático:**
-- Se 100 visitantes únicos acessarem com distribuição 50/50
-- Espera-se aproximadamente 50 verem variante A e 50 verem variante B
-- O mesmo visitante sempre verá a mesma variante, mesmo em requisições diferentes
-- Isso garante que o teste A/B seja válido e consistente
+- Se 100 requisições forem feitas com distribuição 50/50
+- Espera-se aproximadamente 50 retornarem variante A e 50 retornarem variante B
+- A distribuição funciona no agregado, respeitando as porcentagens configuradas
 
 ## 🗄️ Armazenamento
 
@@ -483,8 +458,8 @@ O projeto usa **armazenamento em memória** para MVP. Todos os dados são mantid
 ### Estrutura de Dados
 
 - **tests**: Dicionário que armazena os experimentos (testId, name, variants, status)
-- **impressions**: Lista que registra todas as impressões (testId, variantId, visitorId, timestamp)
-- **conversions**: Lista que registra todas as conversões (testId, variantId, visitorId, event, timestamp)
+- **impressions**: Lista que registra todas as impressões (testId, variantId, timestamp)
+- **conversions**: Lista que registra todas as conversões (testId, variantId, event, timestamp)
 
 ## 📝 Documentação Interativa
 
@@ -495,10 +470,8 @@ Alternativamente, acesse `http://localhost:8000/redoc` para a documentação em 
 ## 🔧 Considerações Técnicas
 
 - **Arquitetura**: Projeto organizado em camadas (API, Services, Repositories, Schemas)
-- **Distribuição**: Implementada usando hash determinístico (MD5) do `testId + visitorId`, garantindo que o mesmo visitante sempre veja a mesma variante
-- **visitorId**: Deve ser um identificador único do visitante (recomenda-se usar UUID salvo no localStorage do frontend)
-- **Seleção de Variante**: Baseada em hash determinístico, garantindo consistência no teste A/B
-- **Validação de Conversão**: O sistema valida se o visitante realmente viu a variante antes de registrar a conversão
+- **Distribuição**: Implementada usando seleção baseada na distribuição configurada
+- **Seleção de Variante**: Baseada na distribuição configurada
 - **Tratamento de Exceções**: Exceções customizadas com handlers globais para respostas HTTP consistentes
 - **Configuração**: Configurações centralizadas em `core/config.py`
 - **Autenticação**: Não implementada no MVP (pode ser adicionada depois)
@@ -539,21 +512,9 @@ test-A-b/
 - Verifique se o `testId` está correto
 - Verifique se o teste está com status "active"
 
-### Variantes sempre retornam a mesma para o mesmo visitante
-- Isso é esperado e correto! O sistema garante que o mesmo visitante sempre veja a mesma variante
-- Para testar diferentes variantes, use `visitorId` diferentes
-- A distribuição funciona no agregado: com muitos visitantes únicos, você verá a distribuição configurada
-
-### Erro: "Visitor did not see variant"
-- O sistema valida se o visitante realmente viu a variante antes de registrar conversão
-- Certifique-se de chamar `/experiment` antes de registrar a conversão
-- Use o mesmo `visitorId` em ambas as chamadas
-- Verifique se o `variantId` na conversão corresponde ao retornado pelo `/experiment`
-
 ### Como testar diferentes variantes
-- Use `visitorId` diferentes para ver diferentes variantes
-- A distribuição funciona no agregado: com muitos visitantes únicos, você verá a distribuição configurada
-- Para testes manuais, gere diferentes UUIDs: `crypto.randomUUID()` no JavaScript ou `uuid.uuid4()` no Python
+- A distribuição funciona no agregado: com muitas requisições, você verá a distribuição configurada
+- Cada requisição pode retornar uma variante diferente baseada na distribuição
 
 ## 🧪 Testando a API
 
@@ -606,8 +567,8 @@ curl -X POST "http://localhost:8000/admin/test" \
     ]
   }'
 
-# 2. Obter variante (o mesmo visitorId sempre verá a mesma variante)
-curl "http://localhost:8000/experiment?testId=teste_simples&visitorId=user1"
+# 2. Obter variante
+curl "http://localhost:8000/experiment?testId=teste_simples"
 
 # 3. Registrar conversão
 curl -X POST "http://localhost:8000/conversion" \
@@ -615,7 +576,6 @@ curl -X POST "http://localhost:8000/conversion" \
   -d '{
     "testId": "teste_simples",
     "variantId": "A",
-    "visitorId": "user1",
     "event": "click"
   }'
 

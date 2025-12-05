@@ -45,21 +45,19 @@ class TestRepository:
     def add_impression(
         self, 
         test_id: str, 
-        variant_id: str, 
-        visitor_id: str
+        variant_id: str
     ) -> Dict:
         """Adiciona uma impressão."""
-        return storage.add_impression(test_id, variant_id, visitor_id)
+        return storage.add_impression(test_id, variant_id)
     
     def add_conversion(
         self,
         test_id: str,
         variant_id: str,
-        visitor_id: str,
         event: str
     ) -> Dict:
         """Adiciona uma conversão."""
-        return storage.add_conversion(test_id, variant_id, visitor_id, event)
+        return storage.add_conversion(test_id, variant_id, event)
     
     def count_impressions(self, test_id: str, variant_id: str) -> int:
         """Conta impressões para um teste e variante específicos."""
@@ -68,13 +66,4 @@ class TestRepository:
     def count_conversions(self, test_id: str, variant_id: str) -> int:
         """Conta conversões para um teste e variante específicos."""
         return storage.count_conversions(test_id, variant_id)
-    
-    def visitor_saw_variant(
-        self, 
-        test_id: str, 
-        variant_id: str, 
-        visitor_id: str
-    ) -> bool:
-        """Verifica se um visitante viu uma variante específica."""
-        return storage.visitor_saw_variant(test_id, variant_id, visitor_id)
 

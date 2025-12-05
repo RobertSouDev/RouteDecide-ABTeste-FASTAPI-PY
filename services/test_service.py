@@ -105,13 +105,12 @@ class TestService:
         )
         return "Test updated"
     
-    def get_experiment(self, test_id: str, visitor_id: str) -> ExperimentResponse:
+    def get_experiment(self, test_id: str) -> ExperimentResponse:
         """
-        Obtém a variante para um visitante e registra impressão.
+        Obtém a variante e registra impressão.
         
         Args:
             test_id: ID do teste
-            visitor_id: ID do visitante
             
         Returns:
             Resposta com variante e seções
@@ -123,18 +122,16 @@ class TestService:
         # Buscar o teste ativo
         test = self.repository.get_active_test_or_raise(test_id)
         
-        # Selecionar variante baseada na distribuição (determinística por visitante)
+        # Selecionar variante baseada na distribuição
         selected_variant = self.variant_selector.select_variant(
             test["variants"], 
-            visitor_id, 
             test_id
         )
         
         # Registrar impressão
         self.repository.add_impression(
             test_id, 
-            selected_variant["variantId"], 
-            visitor_id
+            selected_variant["variantId"]
         )
         
         # Retornar seções
@@ -149,32 +146,22 @@ class TestService:
         self,
         test_id: str,
         variant_id: str,
-        visitor_id: str,
         event: str
     ) -> None:
         """
-        Registra uma conversão para um visitante.
+        Registra uma conversão.
         
         Args:
             test_id: ID do teste
             variant_id: ID da variante
-            visitor_id: ID do visitante
             event: Tipo de evento
             
         Raises:
             TestNotFoundError: Se o teste não existir
-            VisitorNotSeenVariantError: Se o visitante não viu a variante
         """
         # Verificar se o teste existe
         self.repository.get_test_or_raise(test_id)
         
-        # Validar se o visitante viu a variante
-        if not self.repository.visitor_saw_variant(test_id, variant_id, visitor_id):
-            from core.exceptions import VisitorNotSeenVariantError
-            raise VisitorNotSeenVariantError(
-                f"Visitor {visitor_id} did not see variant {variant_id} for test {test_id}"
-            )
-        
         # Registrar conversão
-        self.repository.add_conversion(test_id, variant_id, visitor_id, event)
+        self.repository.add_conversion(test_id, variant_id, event)
 
