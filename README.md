@@ -5,7 +5,7 @@ Servidor FastAPI para distribuição de variações de landing page com base em 
 > **Versão:** 0.1.0  
 > **Python:** >=3.8  
 > **Framework:** FastAPI
-> testekkkkk
+teste se foi pro ar
 
 ## 📑 Índice
 
