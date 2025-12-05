@@ -25,3 +25,8 @@ class VisitorNotSeenVariantError(ABTestException):
     """Visitante não viu a variante especificada."""
     pass
 
+
+class TestAlreadyExistsError(ABTestException):
+    """Teste já existe."""
+    pass
+

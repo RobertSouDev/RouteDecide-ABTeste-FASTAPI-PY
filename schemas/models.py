@@ -48,6 +48,11 @@ class AdminTestRequest(BaseModel):
     variants: List[Variant]
 
 
+class AdminTestUpdateRequest(BaseModel):
+    name: str
+    variants: List[Variant]
+
+
 class AdminTestResponse(BaseModel):
     ok: bool = True
     message: str = "Test created"

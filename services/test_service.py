@@ -3,7 +3,12 @@ from typing import Dict, List
 
 from repositories.test_repository import TestRepository
 from services.variant_selector import VariantSelector
-from core.exceptions import InvalidDistributionError, TestNotFoundError, TestInactiveError
+from core.exceptions import (
+    InvalidDistributionError, 
+    TestNotFoundError, 
+    TestInactiveError,
+    TestAlreadyExistsError
+)
 from schemas.models import ExperimentResponse, Section
 
 
@@ -27,7 +32,7 @@ class TestService:
                 f"Total distribution must equal 100, got {total_distribution}"
             )
     
-    def create_or_update_test(
+    def create_test(
         self,
         test_id: str,
         name: str,
@@ -42,7 +47,11 @@ class TestService:
             variants: Lista de variantes
             
         Returns:
-            Mensagem indicando se foi criado ou atualizado
+            Mensagem indicando que foi criado
+            
+        Raises:
+            TestAlreadyExistsError: Se o teste já existir
+            InvalidDistributionError: Se a distribuição for inválida
         """
         # Validar distribuição
         self.validate_distribution(variants)
@@ -51,18 +60,50 @@ class TestService:
         existing_test = self.repository.get_test(test_id)
         
         if existing_test:
-            # Atualizar mantendo o status atual
-            self.repository.save_test(
-                test_id, 
-                name, 
-                variants, 
-                existing_test["status"]
-            )
-            return "Test updated"
-        else:
-            # Criar novo
-            self.repository.save_test(test_id, name, variants, "active")
-            return "Test created"
+            raise TestAlreadyExistsError(f"Test {test_id} already exists")
+
+        # Criar novo
+        self.repository.save_test(test_id, name, variants, "active")
+        return "Test created"
+    
+    def update_test(
+        self,
+        test_id: str,
+        name: str,
+        variants: List[Dict]
+    ) -> str:
+        """
+        Atualiza um teste existente.
+        
+        Args:
+            test_id: ID do teste
+            name: Nome do teste
+            variants: Lista de variantes
+            
+        Returns:
+            Mensagem indicando que foi atualizado
+            
+        Raises:
+            TestNotFoundError: Se o teste não existir
+            InvalidDistributionError: Se a distribuição for inválida
+        """
+        # Validar distribuição
+        self.validate_distribution(variants)
+        
+        # Verificar se o teste existe
+        existing_test = self.repository.get_test(test_id)
+        
+        if not existing_test:
+            raise TestNotFoundError(f"Test {test_id} not found")
+        
+        # Atualizar mantendo o status atual
+        self.repository.save_test(
+            test_id, 
+            name, 
+            variants, 
+            existing_test["status"]
+        )
+        return "Test updated"
     
     def get_experiment(self, test_id: str, visitor_id: str) -> ExperimentResponse:
         """

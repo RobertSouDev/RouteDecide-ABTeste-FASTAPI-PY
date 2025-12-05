@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends
 
 from schemas.models import (
     AdminTestRequest,
+    AdminTestUpdateRequest,
     AdminTestResponse,
     TestMetricsResponse,
     TestsListResponse,
@@ -17,12 +18,12 @@ router = APIRouter(prefix="/admin", tags=["admin"])
 
 
 @router.post("/test", response_model=AdminTestResponse)
-def create_or_update_test(
+def create_test(
     request: AdminTestRequest,
     test_service: TestService = Depends(get_test_service)
 ):
     """
-    Cria ou atualiza um experimento.
+    Cria um novo experimento.
     """
     # Preparar variantes
     variants_dict = [
@@ -34,8 +35,36 @@ def create_or_update_test(
         for v in request.variants
     ]
     
-    message = test_service.create_or_update_test(
+    message = test_service.create_test(
         request.testId,
+        request.name,
+        variants_dict
+    )
+    
+    return AdminTestResponse(ok=True, message=message)
+
+
+@router.put("/test/{test_id}", response_model=AdminTestResponse)
+def update_test(
+    test_id: str,
+    request: AdminTestUpdateRequest,
+    test_service: TestService = Depends(get_test_service)
+):
+    """
+    Atualiza um experimento existente.
+    """
+    # Preparar variantes
+    variants_dict = [
+        {
+            "variantId": v.variantId,
+            "distribution": v.distribution,
+            "sections": [s.dict() for s in v.sections]
+        }
+        for v in request.variants
+    ]
+    
+    message = test_service.update_test(
+        test_id,
         request.name,
         variants_dict
     )

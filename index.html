@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Teste A/B - Frontend</title>
+</head>
+<body>
+    <div id="app">
+        <h1>Carregando...</h1>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:8000';
+        const TEST_ID = 'landing_001';
+
+        // 1. Gerar ou recuperar visitorId
+        function getVisitorId() {
+            let visitorId = localStorage.getItem('visitorId');
+            if (!visitorId) {
+                visitorId = crypto.randomUUID();
+                localStorage.setItem('visitorId', visitorId);
+            }
+            return visitorId;
+        }
+
+        // 2. Obter variante do backend
+        async function getVariant() {
+            const visitorId = getVisitorId();
+            
+            try {
+                const response = await fetch(`${API_URL}/experiment`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        testId: TEST_ID,
+                        visitorId: visitorId
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error('Erro ao obter variante');
+                }
+
+                const data = await response.json();
+                console.log('Variante recebida:', data);
+                return data;
+            } catch (error) {
+                console.error('Erro:', error);
+                throw error;
+            }
+        }
+
+        // 3. Carregar conteúdo das sections
+        async function loadSections(sections) {
+            const app = document.getElementById('app');
+            app.innerHTML = '';
+
+            for (const section of sections) {
+                try {
+                    // Se contentUrl for HTML, carregar diretamente
+                    const response = await fetch(section.contentUrl);
+                    const content = await response.text();
+                    
+                    const sectionDiv = document.createElement('div');
+                    sectionDiv.id = section.id;
+                    sectionDiv.innerHTML = content;
+                    app.appendChild(sectionDiv);
+                } catch (error) {
+                    console.warn(`Erro ao carregar ${section.id}:`, error);
+                    // Fallback: mostrar placeholder
+                    const sectionDiv = document.createElement('div');
+                    sectionDiv.id = section.id;
+                    sectionDiv.innerHTML = `<p>Seção ${section.id} (URL: ${section.contentUrl})</p>`;
+                    app.appendChild(sectionDiv);
+                }
+            }
+        }
+
+        // 4. Registrar conversão
+        async function registerConversion(variantId, event = 'lead') {
+            const visitorId = getVisitorId();
+            
+            try {
+                const response = await fetch(`${API_URL}/conversion`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        testId: TEST_ID,
+                        variantId: variantId,
+                        visitorId: visitorId,
+                        event: event
+                    })
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.detail || 'Erro ao registrar conversão');
+                }
+
+                console.log('Conversão registrada com sucesso!');
+                return true;
+            } catch (error) {
+                console.error('Erro ao registrar conversão:', error);
+                return false;
+            }
+        }
+
+        // 5. Inicializar página
+        async function init() {
+            try {
+                // Obter variante
+                const experimentData = await getVariant();
+                
+                // Carregar e exibir conteúdo
+                await loadSections(experimentData.sections);
+                
+                // Adicionar listener para botão de conversão (exemplo)
+                const buttons = document.querySelectorAll('button[data-convert]');
+                buttons.forEach(button => {
+                    button.addEventListener('click', async () => {
+                        const success = await registerConversion(
+                            experimentData.variantId,
+                            button.dataset.convert || 'lead'
+                        );
+                        
+                        if (success) {
+                            alert('Obrigado! Sua ação foi registrada.');
+                        }
+                    });
+                });
+
+                // Log para debug
+                console.log(`Visitante vendo variante: ${experimentData.variantId}`);
+                console.log(`Visitor ID: ${getVisitorId()}`);
+                
+            } catch (error) {
+                document.getElementById('app').innerHTML = 
+                    `<p style="color: red;">Erro ao carregar: ${error.message}</p>`;
+            }
+        }
+
+        // Iniciar quando página carregar
+        init();
+    </script>
+</body>
+</html>
